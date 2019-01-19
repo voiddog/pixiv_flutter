@@ -74,3 +74,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.io/custom-fonts/#from-packages
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Italic.ttf
+        - asset: assets/fonts/Roboto-Bold.ttf
+    - family: RobotoThin
+      fonts:
+        - asset: assets/fonts/RobotoThin.ttf
+        - asset: assets/fonts/RobotoThin-Italic.ttf
