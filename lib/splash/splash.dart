@@ -161,7 +161,13 @@ class __LoginComponentState extends State<_LoginComponent> {
     );
   }
 
+  bool _isLogining = false;
+
   void _handleSubmitted() {
+    /// if is request login, just return
+    if (_isLogining) {
+      return;
+    }
     final FormState formState = _formKey.currentState;
     String usrename = _usernameFieldKey.currentState.value;
     String password = _passwordFieldKey.currentState.value;
@@ -177,10 +183,8 @@ class __LoginComponentState extends State<_LoginComponent> {
       ));
       return;
     }
-    Scaffold.of(formState.context).showSnackBar(SnackBar(
-      content: Text(
-          "userName: ${_usernameFieldKey.currentState.value}, password: ${_passwordFieldKey.currentState.value}"),
-    ));
+
+    /// TODO start login
   }
 
   Widget _createInputForm(
