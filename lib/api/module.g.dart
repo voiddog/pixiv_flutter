@@ -6,6 +6,20 @@ part of 'module.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+NetworkError _$NetworkErrorFromJson(Map<String, dynamic> json) {
+  return NetworkError()
+    ..code = json['code'] as int
+    ..message = json['message'] as String
+    ..reason = json['reason'] as String;
+}
+
+Map<String, dynamic> _$NetworkErrorToJson(NetworkError instance) =>
+    <String, dynamic>{
+      'code': instance.code,
+      'message': instance.message,
+      'reason': instance.reason
+    };
+
 User _$UserFromJson(Map<String, dynamic> json) {
   return User()
     ..id = json['id'] as String
@@ -28,7 +42,7 @@ Map<String, dynamic> _$UserToJson(User instance) => <String, dynamic>{
       'comment': instance.comment
     };
 
-LoginResponse _$LoginReponseFromJson(Map<String, dynamic> json) {
+LoginResponse _$LoginResponseFromJson(Map<String, dynamic> json) {
   return LoginResponse()
     ..accessToken = json['access_token'] as String
     ..tokenType = json['token_type'] as String
@@ -39,7 +53,7 @@ LoginResponse _$LoginReponseFromJson(Map<String, dynamic> json) {
         : User.fromJson(json['user'] as Map<String, dynamic>);
 }
 
-Map<String, dynamic> _$LoginReponseToJson(LoginResponse instance) =>
+Map<String, dynamic> _$LoginResponseToJson(LoginResponse instance) =>
     <String, dynamic>{
       'access_token': instance.accessToken,
       'token_type': instance.tokenType,

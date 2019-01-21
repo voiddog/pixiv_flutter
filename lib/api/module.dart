@@ -2,9 +2,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
 
 part 'module.g.dart';
+
+@JsonSerializable()
+class NetworkError {
+  int code;
+
+  String message;
+
+  String reason;
+
+  NetworkError();
+
+  factory NetworkError.fromJson(Map<String, dynamic> json) => _$NetworkErrorFromJson(json);
+
+  Map<String, dynamic> toJson() => _$NetworkErrorToJson(this);
+
+  @override
+  String toString() {
+    return "code: $code\n"
+        "message: $message\n"
+        "reason: $reason";
+  }
+}
 
 @JsonSerializable()
 class User {
@@ -52,7 +75,7 @@ class LoginResponse {
 
   LoginResponse();
 
-  factory LoginResponse.fromJson(Map<String, dynamic> json) => _$LoginReponseFromJson(json);
+  factory LoginResponse.fromJson(Map<String, dynamic> json) => _$LoginResponseFromJson(json);
 }
 
 /// 登录验证
@@ -86,32 +109,38 @@ class Auth {
   bool get isLogin => _isLogin;
 
   Future<LoginResponse> login({@required String username, @required password}) async {
-    final response = await http.post(_authUrl,
-      headers: {
-        "User-Agent": "PixivAndroidApp/5.0.121 (Android 6.0.1; MI 4LTE)",
-        "Accept-Language": "zh_CN",
-        "App-OS": "android",
-        "App-OS-Version": "6.0.1",
-        "App-Version": "5.0.121"
-      },
-      body: {
-        "client_id": _clientId,
-        "client_secret": _clientSecret,
-        "grant_type": "password",
-        "username": username,
-        "password": password,
-        "device_token": "device_token",
-        "include_policy": true,
-        "get_secure_url": true
-      });
-
-      if (response.statusCode == 200) {
-        LoginResponse loginResponse = LoginResponse.fromJson(json.decode(response.body));
-        _updateFromLoginResponse(loginResponse);
-        return loginResponse;
-      } else {
-        throw Exception("Failed to login, error code: ${response.statusCode}");
+    try {
+      final response = await _post(_authUrl,
+          headers: {
+            "User-Agent": "PixivAndroidApp/5.0.121 (Android 6.0.1; MI 4LTE)",
+            "Accept-Language": "zh_CN",
+            "App-OS": "android",
+            "App-OS-Version": "6.0.1",
+            "App-Version": "5.0.121"
+          },
+          body: {
+            "client_id": _clientId,
+            "client_secret": _clientSecret,
+            "grant_type": "password",
+            "username": username,
+            "password": password,
+            "device_token": "device_token",
+            "include_policy": "true",
+            "get_secure_url": "true"
+          });
+      LoginResponse loginResponse = LoginResponse.fromJson(json.decode(response.body));
+      _updateFromLoginResponse(loginResponse);
+      return loginResponse;
+    } on NetworkError catch (e) {
+      if (e.code > 0 && e.reason?.isNotEmpty == true) {
+        // network error
+        try {
+          Map<String, dynamic> errorResp = jsonDecode(e.reason);
+          e.message = errorResp['errors']['system']['message'];
+        } catch (ignore) {}
       }
+      throw e;
+    }
   }
 
   /// private area
@@ -155,5 +184,43 @@ class Auth {
     } else {
       sp.remove("login_user");
     }
+  }
+}
+
+Future<http.Response> _post(url, {Map<String, String> headers, body, Encoding encoding}) async {
+  try {
+    var response = await http.post(
+        url, headers: headers, body: body, encoding: encoding);
+    if (response.statusCode == 200) {
+      return response;
+    } else {
+      throw NetworkError()
+        ..code = response.statusCode
+        ..message = 'network error'
+        ..reason = response.body;
+    }
+  } catch (e, stackTrace) {
+    print('$e');
+    print('$stackTrace');
+    String message;
+    if (e is NetworkError) {
+      throw e;
+    } else if (e is http.ClientException)  {
+      message = e.message;
+    } else if (e is SocketException) {
+      if (e.message?.isNotEmpty == true) {
+        message = e.message;
+      } else {
+        message = '${e.osError}';
+      }
+    }
+    if (message?.isNotEmpty == false) {
+      message = 'Unknown error';
+    }
+    // Anything else that is an exception
+    throw NetworkError()
+      ..code = -1
+      ..message = message
+      ..reason = '$e';
   }
 }

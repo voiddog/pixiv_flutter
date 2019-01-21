@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:pixiv_flutter/api/api.dart';
-import 'package:pixiv_flutter/ui/raised_gradient_button.dart';
+import 'package:pixiv_flutter/ui/ui.dart';
 
 class Splash extends StatefulWidget {
+
+  Splash() : super(key: GlobalKey(debugLabel: "[splash]"));
+
   @override
   _SplashState createState() => _SplashState();
 }
@@ -13,7 +16,8 @@ class _SplashState extends State<Splash> with TickerProviderStateMixin {
 
   @override
   void initState() {
-    _controller = AnimationController(vsync: this, duration: Duration(milliseconds: 1000));
+    _controller = AnimationController(
+        vsync: this, duration: Duration(milliseconds: 1000));
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     super.initState();
     _initAuth();
@@ -22,18 +26,16 @@ class _SplashState extends State<Splash> with TickerProviderStateMixin {
   void _initAuth() async {
     int startTime = DateTime.now().millisecond;
     await Auth.instance.init();
-    if (!mounted) {
-      return;
+    int waitTime = DateTime.now().millisecond - startTime;
+    waitTime = 2000 - waitTime;
+    if (waitTime > 0) {
+      await Future.delayed(Duration(milliseconds: waitTime), () {});
     }
-    if (Auth.instance.isLogin) {
-      /// jump to home
-    } else {
-      int waitTime = DateTime.now().millisecond - startTime;
-      waitTime = 2000 - waitTime;
-      if (waitTime > 0) {
-        await Future.delayed(Duration(milliseconds: waitTime), (){});
-      }
-      if (mounted) {
+    if (mounted) {
+      if (Auth.instance.isLogin) {
+        BuildContext context = (widget.key as GlobalKey).currentContext;
+        Navigator.of(context).pushReplacementNamed("home");
+      } else {
         _controller.forward();
       }
     }
@@ -42,15 +44,19 @@ class _SplashState extends State<Splash> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                tileMode: TileMode.clamp,
-                colors: [Colors.blue[300], Colors.blue[900]])),
-        child: Center(
-          child: _SplashComponent(animation: _animation,),
+      body: Loading(
+        child: Container(
+          decoration: BoxDecoration(
+              gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  tileMode: TileMode.clamp,
+                  colors: [Colors.blue[300], Colors.blue[900]])),
+          child: Center(
+            child: _SplashComponent(
+              animation: _animation,
+            ),
+          ),
         ),
       ),
     );
@@ -58,39 +64,34 @@ class _SplashState extends State<Splash> with TickerProviderStateMixin {
 }
 
 class _SplashComponent extends AnimatedWidget {
-
   _SplashComponent({Key key, Animation<double> animation})
-      : super (key: key, listenable: animation);
+      : super(key: key, listenable: animation);
 
   @override
   Widget build(BuildContext context) {
     double value = 1 - (listenable as Animation<double>).value;
-    return
-      Transform.translate(
-        offset: Offset(0, 100 * value),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Transform.scale(
-              scale: value + 1,
-              child: Text(
-                'Pixiv',
-                style: TextStyle(
-                    fontFamily: 'RobotoThin',
-                    fontSize: 40,
-                    color: Colors.white),
-              ),
+    return Transform.translate(
+      offset: Offset(0, 100 * value),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Transform.scale(
+            scale: value + 1,
+            child: Text(
+              'Pixiv',
+              style: TextStyle(
+                  fontFamily: 'RobotoThin', fontSize: 40, color: Colors.white),
             ),
-            SizedBox(
-              height: 24,
-            ),
-            Opacity(opacity: 1 - value, child: _LoginComponent()),
-          ],
-        ),
-      );
+          ),
+          SizedBox(
+            height: 24,
+          ),
+          Opacity(opacity: 1 - value, child: _LoginComponent()),
+        ],
+      ),
+    );
   }
 }
-
 
 class _LoginComponent extends StatefulWidget {
   @override
@@ -100,9 +101,9 @@ class _LoginComponent extends StatefulWidget {
 class __LoginComponentState extends State<_LoginComponent> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final GlobalKey<FormFieldState<String>> _usernameFieldKey =
-  GlobalKey<FormFieldState<String>>();
+      GlobalKey<FormFieldState<String>>();
   final GlobalKey<FormFieldState<String>> _passwordFieldKey =
-  GlobalKey<FormFieldState<String>>();
+      GlobalKey<FormFieldState<String>>();
 
   @override
   Widget build(BuildContext context) {
@@ -115,7 +116,8 @@ class __LoginComponentState extends State<_LoginComponent> {
           children: <Widget>[
             _createInputForm(
               key: _usernameFieldKey,
-              hintText: "UserName",),
+              hintText: "UserName",
+            ),
             SizedBox(
               height: 30,
             ),
@@ -150,37 +152,54 @@ class __LoginComponentState extends State<_LoginComponent> {
     );
   }
 
-  bool _isLogining = false;
+  bool _isLoading = false;
 
-  void _handleSubmitted() {
+  void _handleSubmitted() async {
     /// if is request login, just return
-    if (_isLogining) {
+    if (_isLoading) {
       return;
     }
-    final FormState formState = _formKey.currentState;
+    final BuildContext context = _formKey.currentState.context;
+    FocusScope.of(context).requestFocus(FocusNode());
+
     String usrename = _usernameFieldKey.currentState.value;
     String password = _passwordFieldKey.currentState.value;
     if (usrename.isEmpty) {
-      Scaffold.of(formState.context).showSnackBar(SnackBar(
+      Scaffold.of(context).showSnackBar(SnackBar(
         content: Text('Username is required.'),
       ));
       return;
     }
     if (password.isEmpty) {
-      Scaffold.of(formState.context).showSnackBar(SnackBar(
+      Scaffold.of(context).showSnackBar(SnackBar(
         content: Text('Password is required.'),
       ));
       return;
     }
 
-    /// TODO start login
+    _isLoading = true;
+    LoadingState.of(context: context).show();
+    try {
+      await Auth.instance.login(username: usrename, password: password);
+      // login success
+      Navigator.of(context).pushReplacementNamed("home");
+    } on NetworkError catch (e) {
+      if (mounted) {
+        Scaffold.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } finally {
+      if (mounted) {
+        LoadingState.of(context: context)?.dismiss();
+      }
+      _isLoading = false;
+    }
   }
 
   Widget _createInputForm(
       {Key key,
-        bool isPassword = false,
-        String hintText,
-        FormFieldSetter<String> onSaved}) {
+      bool isPassword = false,
+      String hintText,
+      FormFieldSetter<String> onSaved}) {
     return Material(
       elevation: 10,
       borderRadius: BorderRadius.circular(6.0),

@@ -6,5 +6,8 @@ void main() => runApp(MaterialApp(
   theme: ThemeData(
     fontFamily: "Roboto",
   ),
+  routes: {
+    "home": (context) => Home()
+  },
   home: Splash(),
 ));
