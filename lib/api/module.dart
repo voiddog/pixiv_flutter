@@ -145,8 +145,8 @@ class Auth {
 
   /// private area
   static const String _authUrl = "https://oauth.secure.pixiv.net/auth/token";
-  static const String _clientId = "BVO2E8vAAikgUBW8FYpi6amXOjQj";
-  static const String _clientSecret = "LI1WsFUDrrquaINOdarrJclCrkTtc3eojCOswlog";
+  static const String _clientId = "MOBrBDS8blbauoSck0ZfDbtuzpyT";
+  static const String _clientSecret = "lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj";
 
   String _accessToken;
   
