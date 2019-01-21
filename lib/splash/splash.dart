@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:pixiv_flutter/api/api.dart';
+import 'package:pixiv_flutter/ui/raised_gradient_button.dart';
 
 class Splash extends StatefulWidget {
   @override
@@ -77,48 +78,37 @@ class __LoginComponentState extends State<_LoginComponent> {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             _createInputForm(
-                key: _usernameFieldKey,
-                hintText: "UserName",),
+              key: _usernameFieldKey,
+              hintText: "UserName",
+            ),
             SizedBox(
               height: 30,
             ),
             _createInputForm(
-                key: _passwordFieldKey,
-                isPassword: true,
-                hintText: "Password"),
+                key: _passwordFieldKey, isPassword: true, hintText: "Password"),
             SizedBox(
               height: 30,
             ),
             Container(
-              height: 50,
-              decoration: BoxDecoration(
-                  boxShadow: [
-                    BoxShadow(
-                        color: Color(0x659C27B0),
-                        offset: Offset(0.0, 5),
-                        blurRadius: 10)
-                  ],
-                  borderRadius: BorderRadius.circular(25),
-                  gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      tileMode: TileMode.clamp,
-                      colors: [Colors.purple[700], Colors.purple[900]])),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(25),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(25),
-                  onTap: _handleSubmitted,
-                  child: Center(
-                    child: Text(
-                      'Login',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
+              constraints: BoxConstraints.expand(height: 50),
+              child: RaisedGradientButton(
+                shadowColor: Color(0xFF9C27B0),
+                elevation: 8.0,
+                highlightElevation: 12.0,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(25.0)),
+                onPressed: _handleSubmitted,
+                gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    tileMode: TileMode.clamp,
+                    colors: [Colors.purple[700], Colors.purple[900]]),
+                child: Text(
+                  'Login',
+                  style: TextStyle(color: Colors.white),
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
