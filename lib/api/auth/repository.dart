@@ -35,6 +35,9 @@ class AuthRepository {
   /// 获取 access token
   String get accessToken => _accessToken;
 
+  /// token 类型
+  String get tokenType => _tokenType;
+
   /// init share_preference data and check login
   Future<void> init() async {
     SharedPreferences sp = await SharedPreferences.getInstance();

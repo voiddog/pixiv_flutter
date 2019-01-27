@@ -36,6 +36,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     });
   }
 
+  String get authCode => "${repository.tokenType} ${repository.accessToken}";
+
   @override
   AuthState get initialState => AuthUnInit();
 

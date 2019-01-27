@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import 'auth/auth.dart';
+import 'api/api.dart';
 import 'page/page.dart';
-import 'ui/ui.dart';
 
 void main() => runApp(PixivApp());
 

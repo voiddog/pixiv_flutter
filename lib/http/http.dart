@@ -35,6 +35,46 @@ class Http {
     "App-Version": "5.0.121",
   };
 
+  static Future<http.Response> get(url, {Map<String, String> headers}) async {
+    Map<String, String> finalHeaders = Map.from(_defaultRequestHeader);
+    if (headers != null) {
+      finalHeaders.addAll(headers);
+    }
+    try {
+      http.Response response = await http.get(url, headers: headers);
+      if (response.statusCode == 200) {
+        return response;
+      }
+      throw HttpError(
+          code: response.statusCode,
+          message: "Http code not 200",
+          body: response.body
+      );
+    } on HttpError catch (e) {
+      throw e;
+    } catch (e) {
+      /// get error message
+      String message;
+      if (e is http.ClientException) {
+        message = e.message;
+      } else if (e is SocketException) {
+        if (e.message?.isNotEmpty == true) {
+          message = e.message;
+        } else {
+          message = '${e.osError}';
+        }
+      }
+      if (message?.isNotEmpty == false) {
+        message = 'Unknown error';
+      }
+      throw HttpError(
+          code: -1,
+          message: message,
+          originException: e
+      );
+    }
+  }
+
   /// 发送 post 请求
   /// [headers] 请求头，默认会填上 [_defaultRequestHeader]，如果不为空，则会覆盖默认里面的 header
   /// [body] 请求数据体

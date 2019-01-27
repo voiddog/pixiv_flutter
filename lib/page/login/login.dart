@@ -21,8 +21,8 @@
 import 'package:flutter/material.dart';
 import 'package:pixiv_flutter/ui/ui.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pixiv_flutter/auth/auth.dart';
 import 'package:pixiv_flutter/bloc/bloc.dart';
+import 'package:pixiv_flutter/api/api.dart';
 import 'package:pixiv_flutter/page/page.dart';
 
 const Color _primaryColor = Color(0xFF2a29e8);
