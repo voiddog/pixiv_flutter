@@ -21,6 +21,17 @@
 import 'package:flutter/material.dart';
 
 class Loading extends StatefulWidget {
+  static LoadingState of(BuildContext context, {bool nullOk = true}) {
+    final LoadingState state =
+        context.ancestorStateOfType(TypeMatcher<LoadingState>());
+    assert(() {
+      if (state == null && !nullOk) {
+        throw FlutterError('No loading state found in the build tree');
+      }
+      return true;
+    }());
+    return state;
+  }
 
   /// default overlay function
   static Widget createOverlay(BuildContext context) {
@@ -45,13 +56,17 @@ class Loading extends StatefulWidget {
 
   final WidgetBuilder overlayBuilder;
 
+  final Duration animationDuration;
+
   Loading(
       {Key key,
       this.initShowLoading = false,
       this.child,
+      this.animationDuration = const Duration(milliseconds: 200),
       this.overlayBuilder = createOverlay})
       : assert(overlayBuilder != null),
         assert(initShowLoading != null),
+        assert(animationDuration != null),
         super(key: key);
 
   @override
@@ -59,18 +74,6 @@ class Loading extends StatefulWidget {
 }
 
 class LoadingState extends State<Loading> with SingleTickerProviderStateMixin {
-
-  static LoadingState of({@required BuildContext context, bool nullOk = true}) {
-    final LoadingState state = context.ancestorStateOfType(TypeMatcher<LoadingState>());
-    assert((){
-      if (state == null && !nullOk) {
-        throw FlutterError('No loading state found in the build tree');
-      }
-      return true;
-    }());
-    return state;
-  }
-
   void show() {
     setState(() {
       _showLoading = true;
@@ -96,7 +99,7 @@ class LoadingState extends State<Loading> with SingleTickerProviderStateMixin {
     _showLoading = widget.initShowLoading;
     _controller = AnimationController(
         vsync: this,
-        duration: Duration(milliseconds: 300),
+        duration: widget.animationDuration,
         value: _showLoading ? 1 : 0);
     _animation = CurvedAnimation(parent: _controller, curve: Curves.easeIn);
     super.initState();
@@ -104,20 +107,25 @@ class LoadingState extends State<Loading> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(animation: _animation, builder: (context, child){
-      var children = [child];
-      if (_controller.isAnimating || _controller.isCompleted) {
-        // show loading
-        final Widget loading = widget.overlayBuilder(context);
-        children.add(
-          AbsorbPointer(
-            child: Opacity(opacity: _animation.value, child: loading,),
-          )
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        var children = [child];
+        if (_controller.isAnimating || _controller.isCompleted) {
+          // show loading
+          final Widget loading = widget.overlayBuilder(context);
+          children.add(AbsorbPointer(
+            child: Opacity(
+              opacity: _animation.value,
+              child: loading,
+            ),
+          ));
+        }
+        return Stack(
+          children: children,
         );
-      }
-      return Stack(
-        children: children,
-      );
-    }, child: widget.child,);
+      },
+      child: widget.child,
+    );
   }
 }

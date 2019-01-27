@@ -27,7 +27,6 @@ class _PixivAppState extends State<PixivApp> {
     return BlocProvider(
       bloc: _authBloc,
       child: MaterialApp (
-        color: PixivColors.blue,
         theme: ThemeData(
           fontFamily: "Roboto",
         ),

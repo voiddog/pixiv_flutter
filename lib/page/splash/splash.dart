@@ -59,7 +59,7 @@ class _SplashPageState extends State<SplashPage> {
             'Pixiv',
             style: TextStyle(
               fontFamily: 'RobotoThin',
-              fontSize: 50,
+              fontSize: 80,
               color: Colors.white,
             ),
           ),
@@ -77,7 +77,7 @@ class _SplashPageState extends State<SplashPage> {
       await Future.delayed(Duration(milliseconds: duration));
     }
     if (mounted) {
-      Navigator.of(context).push(new MaterialPageRoute(builder: (context) {
+      Navigator.of(context).pushReplacement(new MaterialPageRoute(builder: (context) {
         return LoginPage();
       }));
     }
@@ -92,7 +92,7 @@ class _SplashPageState extends State<SplashPage> {
       await Future.delayed(Duration(milliseconds: duration));
     }
     if (mounted) {
-      Navigator.of(context).push(new MaterialPageRoute(builder: (context) {
+      Navigator.of(context).pushReplacement(new MaterialPageRoute(builder: (context) {
         return HomePage();
       }));
     }
