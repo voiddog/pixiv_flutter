@@ -39,6 +39,7 @@ class BlocReceiver<E, S> extends StatefulWidget {
 }
 
 class _BlocReceiverState<E, S> extends State<BlocReceiver<E, S>> {
+
   StreamSubscription<S> _subscription;
 
   @override

@@ -1,9 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:pixiv_flutter/api/api.dart';
 import 'package:pixiv_flutter/page/page.dart';
+import 'package:pixiv_flutter/bloc/bloc.dart';
 
 class SplashPage extends StatefulWidget {
   SplashPage() : super();

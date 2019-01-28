@@ -41,7 +41,9 @@ class Http {
       finalHeaders.addAll(headers);
     }
     try {
+      _logRequest(url, finalHeaders, null);
       http.Response response = await http.get(url, headers: headers);
+      _logReponse(url, response.body);
       if (response.statusCode == 200) {
         return response;
       }
@@ -86,8 +88,10 @@ class Http {
       finalHeaders.addAll(headers);
     }
     try {
+      _logRequest(url, finalHeaders, body);
       http.Response response = await http.post(url, headers: finalHeaders,
           body: body, encoding: encoding);
+      _logReponse(url, response.body);
       if (response.statusCode == 200) {
         return response;
       }
@@ -119,5 +123,16 @@ class Http {
         originException: e
       );
     }
+  }
+
+  static void _logRequest(String url, Map<String, String> header, dynamic body) {
+    print('start request to url: $url');
+    print('header: $header');
+    print('body: $body');
+  }
+
+  static void _logReponse(String url, String body) {
+    print('on response get at: $url');
+    print('response: $body');
   }
 }

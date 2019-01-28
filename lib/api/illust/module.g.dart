@@ -23,7 +23,7 @@ Map<String, dynamic> _$MetaSinglePageToJson(MetaSinglePage instance) =>
 
 Illust _$IllustFromJson(Map<String, dynamic> json) {
   return Illust()
-    ..id = json['id'] as String
+    ..id = json['id'] as int
     ..title = json['title'] as String
     ..type = json['type'] as String
     ..imageUrls = json['image_urls'] == null
@@ -84,4 +84,25 @@ Map<String, dynamic> _$IllustToJson(Illust instance) => <String, dynamic>{
       'is_bookmarked': instance.isBookmarked,
       'visible': instance.visible,
       'is_muted': instance.isMuted
+    };
+
+RecommendedResponse _$RecommendedResponseFromJson(Map<String, dynamic> json) {
+  return RecommendedResponse()
+    ..illusts = (json['illusts'] as List)
+        ?.map((e) =>
+            e == null ? null : Illust.fromJson(e as Map<String, dynamic>))
+        ?.toList()
+    ..rankingIllusts = (json['ranking_illusts'] as List)
+        ?.map((e) =>
+            e == null ? null : Illust.fromJson(e as Map<String, dynamic>))
+        ?.toList()
+    ..nextUrl = json['next_url'] as String;
+}
+
+Map<String, dynamic> _$RecommendedResponseToJson(
+        RecommendedResponse instance) =>
+    <String, dynamic>{
+      'illusts': instance.illusts,
+      'ranking_illusts': instance.rankingIllusts,
+      'next_url': instance.nextUrl
     };

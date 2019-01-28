@@ -21,16 +21,17 @@ import 'package:pixiv_flutter/http/http.dart';
 import 'package:pixiv_flutter/api/api.dart';
 import 'dart:convert';
 
-class RecommendedRepository {
+class IllustsRepository {
 
+  /// 推荐信息
   Future<RecommendedResponse> recommended(String auth, String nextUrl) async {
     assert(auth != null);
     Map<String, String> header = {
       "authorization": auth
     };
     final response = await Http.get(
-      nextUrl ?? "https://app-api.pixiv.net/v1/illust/recommended?filter=for_android&include_ranking_illusts=true&include_privacy_policy=true",
-      headers: header
+        nextUrl ?? "https://app-api.pixiv.net/v1/illust/recommended?filter=for_android&include_ranking_illusts=true&include_privacy_policy=true",
+        headers: header
     );
     return RecommendedResponse.fromJson(jsonDecode(response.body));
   }

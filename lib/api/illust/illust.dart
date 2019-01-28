@@ -16,6 +16,7 @@
 /// * * ┃ ┫ ┫   ┃ ┫ ┫
 /// * * ┗━┻━┛   ┗━┻━┛
 /// @author qigengxin
-/// @since 2019-01-27 19:14
-
-export 'recommended/module.dart';
+/// @since 2019-01-28 22:40
+///
+export 'module.dart';
+export 'repository.dart';

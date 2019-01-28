@@ -45,7 +45,7 @@ class MetaSinglePage {
 /// 画报
 @JsonSerializable()
 class Illust {
-  String id;
+  int id;
 
   String title;
 
@@ -105,4 +105,18 @@ class Illust {
   Illust();
 
   factory Illust.fromJson(Map<String, dynamic> json) => _$IllustFromJson(json);
+}
+
+@JsonSerializable()
+class RecommendedResponse {
+  List<Illust> illusts;
+
+  List<Illust> rankingIllusts;
+
+  String nextUrl;
+
+  RecommendedResponse();
+
+  factory RecommendedResponse.fromJson(Map<String, dynamic> json) =>
+      _$RecommendedResponseFromJson(json);
 }

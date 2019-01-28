@@ -12,6 +12,15 @@ class ImageUrls {
 
   String original;
 
+  String get previewUrl {
+    if (medium?.isNotEmpty == true) {
+      return medium;
+    } else if (large?.isNotEmpty == true) {
+      return large;
+    }
+    return original;
+  }
+
   ImageUrls();
 
   factory ImageUrls.fromJson(Map<String, dynamic> json) =>
@@ -20,6 +29,8 @@ class ImageUrls {
 
 /// 数据加载装填
 mixin DataLoadingState<T> {
+  /// 是否是第一次加载
+  bool isInitLoad = false;
   /// 是否是 loading 状态
   bool isLoading = false;
   /// 数据
@@ -29,5 +40,5 @@ mixin DataLoadingState<T> {
   /// 错误原型
   dynamic error;
   // 是否成功
-  bool get isSuccess => error == null;
+  bool get isSuccess => error == null && !isLoading;
 }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
+import 'package:pixiv_flutter/api/api.dart';
+import 'package:pixiv_flutter/page/page.dart';
+import 'package:pixiv_flutter/bloc/bloc.dart';
+import 'bloc.dart';
+import 'header.dart';
 import 'package:pixiv_flutter/ui/ui.dart';
 
 class HomePage extends StatefulWidget {
@@ -10,100 +14,182 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  HomeBloc _bloc;
+
   @override
   void initState() {
     super.initState();
+    AuthBloc authBloc = BlocProvider.of<AuthBloc>(context);
+    authBloc.dispatch(RefreshTokenEvent());
+    _bloc = HomeBloc(authBloc: authBloc, repository: IllustsRepository());
+    _bloc.dispatch(RefreshEvent());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xfff5fafe),
-      body: CustomScrollView(
-        slivers: <Widget>[
-          SliverPersistentHeader(
-            delegate: _HeadDelegate(
-              paddingTop: MediaQuery.of(context).padding.top,
-              expandHeight: 300,
-            ),
-          )
-        ],
+      body: BlocReceiver(
+        bloc: BlocProvider.of<AuthBloc>(context),
+        callback: (context, state) {
+          /// 如果触发了登出，退出到登出界面
+          if (state is Unauthenticated && state.isLogout) {
+            Navigator.of(context).popUntil((route) {
+              return route.isFirst;
+            });
+            Navigator.of(context)
+                .pushReplacement(MaterialPageRoute(builder: (context) {
+              return LoginPage();
+            }));
+          }
+        },
+        child: BlocBuilder(bloc: _bloc, builder: _buildContent),
       ),
     );
   }
-}
 
-class _HeadPainter extends CustomPainter {
-  final Gradient gradient;
-  final double curveHeight;
-
-  _HeadPainter({this.gradient, this.curveHeight = 0})
-      : assert(gradient != null);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    var rect = Offset.zero & size;
-    Paint paint = Paint()..shader = gradient.createShader(rect);
-    double distance = size.width / 3;
-    canvas.drawPath(
-        Path()
-          ..moveTo(rect.left, rect.top)
-          ..lineTo(rect.right, rect.top)
-          ..lineTo(rect.right, rect.bottom - curveHeight)
-          ..cubicTo(rect.right - distance, rect.bottom, rect.left + distance,
-              rect.bottom, rect.left, rect.bottom - curveHeight)
-          ..lineTo(rect.left, rect.top),
-        paint);
+  Widget _buildContent(BuildContext context, HomeState state) {
+    if (state is RefreshingState) {
+      if (state.isInitLoad) {
+        return _createPageLoading(context, state);
+      }
+    } else if (state is ErrorState) {
+      if (state.isRefresh) {
+        return _createPageError(context, state);
+      }
+    } else if (state is EmptyState) {
+      return _createPageEmpty(context, state);
+    }
+    return _createPageSliver(context, state);
   }
 
-  @override
-  bool shouldRepaint(_HeadPainter oldDelegate) {
-    return gradient != oldDelegate.gradient ||
-        curveHeight != oldDelegate.curveHeight;
-  }
-}
-
-class _HeadDelegate extends SliverPersistentHeaderDelegate {
-  final double curveHeight;
-  final double expandHeight;
-  final double closeHeight;
-  final double paddingTop;
-
-  _HeadDelegate(
-      {this.expandHeight,
-      this.closeHeight = kToolbarHeight,
-      this.paddingTop,
-      this.curveHeight = 50});
-
-  @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    final Size size = MediaQuery.of(context).size;
-    final double width = size.width;
-    final double visibleMainHeight = maxExtent - shrinkOffset - paddingTop;
-    final double radio = (visibleMainHeight / expandHeight).clamp(0, 1);
-
-    return CustomPaint(
-      painter: _HeadPainter(
-          curveHeight: curveHeight * radio,
-          gradient: LinearGradient(
-              colors: [Colors.blue[400], Colors.blue[700], Colors.blue[600]],
-              begin: Alignment.bottomLeft,
-              end: Alignment.topRight,
-              stops: [0, 0.6, 1])),
-      child: Center(),
+  /// 创建整页加载
+  Widget _createPageLoading(BuildContext context, RefreshingState state) {
+    return Column(
+      children: <Widget>[
+        HeadLayout(
+            contentHeight: 200,
+            curveHeight: 40,
+            paddingTop: MediaQuery.of(context).padding.top),
+        Expanded(
+          child: Center(
+            child: CircularProgressIndicator(),
+          ),
+        )
+      ],
     );
   }
-
-  @override
-  double get maxExtent => max(expandHeight, minExtent);
-
-  @override
-  double get minExtent => closeHeight + paddingTop;
-
-  @override
-  bool shouldRebuild(_HeadDelegate oldDelegate) {
-    return expandHeight != oldDelegate.expandHeight ||
-        closeHeight != oldDelegate.closeHeight;
+  
+  /// 创建页面等级的错误
+  Widget _createPageError(BuildContext context, ErrorState state) {
+    return Column(
+      children: <Widget>[
+        HeadLayout(
+          contentHeight: 200,
+          curveHeight: 40,
+          paddingTop: MediaQuery.of(context).padding.top,
+        ),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(Icons.error_outline, size: 40, color: Colors.grey,),
+                SizedBox(height: 10,),
+                Text('${state.message}', style: TextStyle(color: Colors.grey),),
+                SizedBox(height: 10,),
+                FlatButton(onPressed: (){
+                  _bloc.dispatch(RefreshEvent());
+                }, child: Text('Refresh', style: TextStyle(color: Colors.grey),),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(6)),
+                  side: BorderSide(color: Colors.grey, width: 2)
+                ),)
+              ],
+            ),
+          ),
+        )
+      ],
+    );
+  }
+  
+  Widget _createPageEmpty(BuildContext context, EmptyState state) {
+    return Column(
+      children: <Widget>[
+        HeadLayout(
+          contentHeight: 200,
+          curveHeight: 40,
+          paddingTop: MediaQuery.of(context).padding.top,
+        ),
+        Expanded(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(Icons.hourglass_empty, size: 40, color: Colors.grey,),
+                SizedBox(height: 10,),
+                Text('No data', style: TextStyle(color: Colors.grey),),
+                SizedBox(height: 10,),
+                FlatButton(onPressed: (){
+                  _bloc.dispatch(RefreshEvent());
+                }, child: Text('Refresh', style: TextStyle(color: Colors.grey),),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(6)),
+                      side: BorderSide(color: Colors.grey, width: 2)
+                  ),)
+              ],
+            ),
+          ),
+        )
+      ],
+    );
+  }
+  
+  Widget _createPageSliver(BuildContext context, HomeState state) {
+    List<Widget> sliver = [];
+    /// add header
+    sliver.add(
+      SliverPersistentHeader(delegate: HeadDelegate(
+        contentHeight: 200,
+        closeHeight: kToolbarHeight,
+        paddingTop: MediaQuery.of(context).padding.top,
+        curveHeight: 40
+      ))
+    );
+    // images
+    if (state is StateData) {
+      sliver.add(
+          SliverList(
+            delegate: SliverChildBuilderDelegate((context, index){
+              if (state.illusts.length - index < 5) {
+                // need load more
+                _bloc.dispatch(LoadMoreEvent());
+              }
+              var data = state.illusts[index];
+              return Container(
+                width: double.infinity,
+                child: AspectRatio(aspectRatio: data.width.toDouble()/data.height.toDouble(),
+                child: PixivImage(data.imageUrls?.previewUrl)),
+              );
+            }, childCount: state.illusts.length),
+          )
+      );
+    }
+    if (state is LoadingMoreState) {
+      sliver.add(
+        SliverToBoxAdapter(
+          child: Container(
+            constraints: BoxConstraints.expand(height: 50),
+            child: Center(
+              child: CircularProgressIndicator(),
+            ),
+          ),
+        )
+      );
+    }
+    return CustomScrollView(
+      physics: AlwaysScrollableScrollPhysics(),
+      slivers: sliver,
+    );
   }
 }

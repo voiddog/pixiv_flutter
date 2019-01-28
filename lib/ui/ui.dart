@@ -21,3 +21,4 @@
 export 'loading.dart';
 export 'raised_gradient_button.dart';
 export 'color.dart';
+export 'image.dart';

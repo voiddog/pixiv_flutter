@@ -26,7 +26,7 @@ part 'module.g.dart';
 @JsonSerializable()
 class User {
 
-  String id;
+  int id;
 
   String name;
 
