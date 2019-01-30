@@ -21,6 +21,19 @@
 import 'package:flutter/material.dart';
 
 class PixivImage extends StatelessWidget {
+
+  static NetworkImage createImageProvider(String url, {double scale = 1.0, }) {
+    return NetworkImage(
+      url,
+      scale: scale,
+      headers: {
+        "user-agent": "PixivAndroidApp/5.0.108 (Android 6.0.1; MI 4LTE)",
+        "referer": "https://app-api.pixiv.net/",
+        "accept-encoding": "gzip"
+      },
+    );
+  }
+
   final String src;
 
   final double scale;
@@ -29,7 +42,9 @@ class PixivImage extends StatelessWidget {
 
   final double height;
 
-  PixivImage(this.src, {this.scale = 1.0, this.width, this.height});
+  final BoxFit fit;
+
+  PixivImage(this.src, {this.scale = 1.0, this.width, this.height, this.fit});
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +53,6 @@ class PixivImage extends StatelessWidget {
       width: this.width,
       height: this.height,
       scale: this.scale,
-      fit: BoxFit.cover,
       headers: {
         "user-agent": "PixivAndroidApp/5.0.108 (Android 6.0.1; MI 4LTE)",
         "referer": "https://app-api.pixiv.net/",

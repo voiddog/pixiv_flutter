@@ -28,22 +28,22 @@ abstract class AuthState {}
 
 /// 验证未初始化
 class AuthUnInit extends AuthState {
-
   @override
   String toString() => "AuthUnInit";
 }
 
 /// 已经登录了
 class Authenticated extends AuthState {
-
   final String accessToken;
 
   final LoginUser user;
 
-  /// 重新登陆了，或者刷新了 token
-  final bool isLogin;
+  final AuthState preState;
 
-  Authenticated({@required this.accessToken, this.user, this.isLogin = true});
+  Authenticated(
+      {@required this.accessToken,
+      this.user,
+      this.preState});
 
   @override
   String toString() => "Authenticated";
@@ -51,7 +51,6 @@ class Authenticated extends AuthState {
 
 /// 未登录
 class Unauthenticated extends AuthState {
-
   /// 前一个状态是登录状态, 改编成了登出
   final bool isLogout;
 
@@ -59,13 +58,19 @@ class Unauthenticated extends AuthState {
   final String message;
 
   Unauthenticated({this.message, this.isLogout = false});
+
   @override
   String toString() => "Unauthenticated";
 }
 
+/// token 过期事件
+class TokenOverdue extends AuthState {
+  @override
+  String toString() => "TokenOverdue";
+}
+
 /// 请求登录验证中
 class AuthLoading extends AuthState {
-
   static const int STATE_LOGIN = 1;
   static const int STATE_LOGOUT = 2;
   static const int STATE_REFRESH = 3;
@@ -84,7 +89,6 @@ abstract class AuthEvent {}
 
 /// 初始化事件
 class AuthInitEvent extends AuthEvent {
-
   @override
   String toString() => "InitEvent";
 }
@@ -103,19 +107,24 @@ class LoginEvent extends AuthEvent {
 
 /// 请求刷新 token 事件
 class RefreshTokenEvent extends AuthEvent {
-
   @override
   String toString() => "RefreshTokenEvent";
 }
 
 /// 请求登出事件
 class LogoutEvent extends AuthEvent {
-
   @override
   String toString() => "LogoutEvent";
 }
 
+class TokenOverdueEvent extends AuthEvent {
+  @override
+  String toString() => "TokenOverdueEvent";
+}
+
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
+  static const CODE_ERROR_ACCESS_TOKEN = 400;
+
   final AuthRepository repository;
 
   AuthBloc({@required this.repository}) : assert(repository != null) {
@@ -124,7 +133,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     });
   }
 
-  String get authCode => "${repository.tokenType[0].toUpperCase()}${repository.tokenType.substring(1)} ${repository.accessToken}";
+  String get authCode =>
+      "${repository.tokenType[0].toUpperCase()}${repository.tokenType.substring(1)} ${repository.accessToken}";
 
   @override
   AuthState get initialState => AuthUnInit();
@@ -137,6 +147,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (event is AuthInitEvent) {
         if (repository.isLogin) {
           yield new Authenticated(
+              preState: currentState,
               accessToken: repository.accessToken, user: repository.user);
         } else {
           yield new Unauthenticated();
@@ -152,7 +163,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           yield new Authenticated(
               accessToken: response.accessToken,
               user: response.user,
-              isLogin: true);
+              preState: currentState);
         } on LoginError catch (e) {
           yield new Unauthenticated(message: e.message);
         }
@@ -166,17 +177,39 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           yield new Authenticated(
               accessToken: response.accessToken,
               user: response.user,
-              isLogin: true);
+              preState: currentState);
         } on LoginError catch (e) {
-          /// 登出事件
-          bool isLogout = currentState is Authenticated;
-          yield new Unauthenticated(message: e.message, isLogout: isLogout);
+          /// 刷新 token 失败
+          if (e.code == CODE_ERROR_ACCESS_TOKEN) {
+            /// 需要重新登录
+            yield new TokenOverdue();
+          }
         }
       } else if (event is LogoutEvent) {
         yield new AuthLoading(AuthLoading.STATE_LOGOUT);
         await repository.logout();
         bool isLogout = currentState is Authenticated;
         yield new Unauthenticated(isLogout: isLogout);
+      } else if (event is TokenOverdueEvent) {
+        yield new TokenOverdue();
+      }
+    } else if (currentState is TokenOverdue) {
+      if (event is RefreshTokenEvent) {
+        /// 刷新 token 事件
+        yield new AuthLoading(AuthLoading.STATE_REFRESH);
+        try {
+          LoginResponse response = await repository.refreshToken();
+          yield new Authenticated(
+              accessToken: response.accessToken,
+              user: response.user,
+              preState: currentState);
+        } on LoginError catch (e) {
+          /// 刷新 token 失败
+          if (e.code == CODE_ERROR_ACCESS_TOKEN) {
+            /// 需要重新登录
+            yield new TokenOverdue();
+          }
+        }
       }
     }
   }

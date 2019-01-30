@@ -20,16 +20,50 @@
 /// @since 2019-01-25 12:20
 ///
 import 'package:flutter/foundation.dart';
+import 'package:json_annotation/json_annotation.dart';
+import 'dart:convert';
+part 'module.g.dart';
+
+@JsonSerializable()
+class ErrorMessage {
+  @JsonKey()
+  String userMessage;
+  @JsonKey()
+  String message;
+  @JsonKey()
+  String reason;
+
+  ErrorMessage();
+
+  factory ErrorMessage.fromJson(Map<String, dynamic> json) => _$ErrorMessageFromJson(json);
+}
 
 class HttpError implements Exception {
   /// http 请求错误码 < 0 表示网络异常
   int code;
-  /// 错误信息
-  String message;
   /// 错误 body
   String body;
   /// 如果有，则表示源错误
   dynamic originException;
+  /// 业务错误
+  ErrorMessage errorMessage;
+  /// 错误信息
+  String get message {
+    if (errorMessage == null) {
+      return "Unknow HttpError:$code";
+    }
+    if (errorMessage.userMessage?.isNotEmpty == true) {
+      return errorMessage.userMessage;
+    }
+    return "Unknow HttpError:$code";
+  }
 
-  HttpError({@required this.code, this.message, this.body, this.originException});
+  HttpError({@required this.code, this.body, this.originException, this.errorMessage}) {
+    if (this.body != null && this.errorMessage == null) {
+      try {
+        errorMessage = ErrorMessage.fromJson(jsonDecode(this.body)["error"]);
+        print('error: ${errorMessage.message}');
+      } catch (ignore) {}
+    }
+  }
 }

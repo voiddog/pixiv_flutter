@@ -145,7 +145,7 @@ class AuthRepository {
         // network error
         try {
           Map<String, dynamic> errorResp = jsonDecode(e.body);
-          e.message = errorResp['errors']['system']['message'];
+          e.errorMessage = ErrorMessage()..message=errorResp['errors']['system']['message'];
         } catch (ignore) {}
       }
       throw LoginError(code: e.code, message: e.message);

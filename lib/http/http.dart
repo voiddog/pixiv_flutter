@@ -49,7 +49,6 @@ class Http {
       }
       throw HttpError(
           code: response.statusCode,
-          message: "Http code not 200",
           body: response.body
       );
     } on HttpError catch (e) {
@@ -71,7 +70,7 @@ class Http {
       }
       throw HttpError(
           code: -1,
-          message: message,
+          errorMessage: ErrorMessage()..message=message,
           originException: e
       );
     }
@@ -97,7 +96,6 @@ class Http {
       }
       throw HttpError(
         code: response.statusCode,
-        message: "Http code not 200",
         body: response.body
       );
     } on HttpError catch (e) {
@@ -119,7 +117,7 @@ class Http {
       }
       throw HttpError(
         code: -1,
-        message: message,
+        errorMessage: ErrorMessage()..message=message,
         originException: e
       );
     }

@@ -41,7 +41,7 @@ mixin StateData on HomeState {
 }
 
 class RefreshingState extends HomeState with StateData {
-  bool isInitLoad = false;
+  bool isPageLoad = false;
 }
 
 class LoadingMoreState extends HomeState with StateData {}
@@ -55,6 +55,7 @@ class EmptyState extends HomeState {}
 class CompleteState extends HomeState with StateData {}
 
 class ErrorState extends HomeState with StateData {
+  int errorCode = -1;
   bool isRefresh = false;
   String message;
 }
@@ -82,12 +83,13 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     if (currentState is IdleState) {
       if (event is RefreshEvent) {
         yield new RefreshingState()
-          ..isInitLoad = true;
+          ..isPageLoad = true;
         yield* refresh(currentState);
       }
     } else if (currentState is EmptyState) {
       if (event is RefreshEvent) {
-        yield new RefreshingState();
+        yield new RefreshingState()
+          ..isPageLoad=true;
         yield* refresh(currentState);
       }
     } else if (currentState is CompleteState) {
@@ -105,7 +107,9 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       }
     } else if (currentState is ErrorState) {
       if (event is RefreshEvent) {
-        yield new RefreshingState().from(currentState);
+        yield new RefreshingState()
+            ..isPageLoad = currentState.illusts?.isNotEmpty != true
+            ..from(currentState);
         yield* refresh(currentState);
       }
     }
@@ -125,6 +129,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       }
     } on HttpError catch (e) {
       var next = new ErrorState()
+          ..errorCode = e.code
           ..isRefresh = true
           ..message = e.message;
       if (state is StateData) {
@@ -150,6 +155,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     } on HttpError catch (e) {
       yield new ErrorState()
           ..from(state)
+          ..errorCode = e.code
           ..isRefresh = false
           ..message = e.message;
     }

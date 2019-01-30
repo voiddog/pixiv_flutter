@@ -5,12 +5,16 @@ import 'package:pixiv_flutter/bloc/bloc.dart';
 import 'bloc.dart';
 import 'header.dart';
 import 'package:pixiv_flutter/ui/ui.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'illust_card.dart';
 
 class HomePage extends StatefulWidget {
-  HomePage() : super(key: GlobalKey(debugLabel: "[home]"));
+  HomePage() : super();
 
   @override
-  _HomePageState createState() => _HomePageState();
+  _HomePageState createState() {
+    return _HomePageState();
+  }
 }
 
 class _HomePageState extends State<HomePage> {
@@ -41,6 +45,9 @@ class _HomePageState extends State<HomePage> {
                 .pushReplacement(MaterialPageRoute(builder: (context) {
               return LoginPage();
             }));
+          } else if (state is Authenticated && state.preState is TokenOverdue) {
+            // need refresh
+            _bloc.dispatch(RefreshEvent());
           }
         },
         child: BlocBuilder(bloc: _bloc, builder: _buildContent),
@@ -50,7 +57,7 @@ class _HomePageState extends State<HomePage> {
 
   Widget _buildContent(BuildContext context, HomeState state) {
     if (state is RefreshingState) {
-      if (state.isInitLoad) {
+      if (state.isPageLoad) {
         return _createPageLoading(context, state);
       }
     } else if (state is ErrorState) {
@@ -79,9 +86,12 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
-  
+
   /// 创建页面等级的错误
   Widget _createPageError(BuildContext context, ErrorState state) {
+    if (state.errorCode == AuthBloc.CODE_ERROR_ACCESS_TOKEN) {
+      BlocProvider.of<AuthBloc>(context).dispatch(TokenOverdueEvent());
+    }
     return Column(
       children: <Widget>[
         HeadLayout(
@@ -94,17 +104,38 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Icon(Icons.error_outline, size: 40, color: Colors.grey,),
-                SizedBox(height: 10,),
-                Text('${state.message}', style: TextStyle(color: Colors.grey),),
-                SizedBox(height: 10,),
-                FlatButton(onPressed: (){
-                  _bloc.dispatch(RefreshEvent());
-                }, child: Text('Refresh', style: TextStyle(color: Colors.grey),),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(6)),
-                  side: BorderSide(color: Colors.grey, width: 2)
-                ),)
+                Icon(
+                  Icons.error_outline,
+                  size: 40,
+                  color: Colors.grey,
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                Text(
+                  '${state.message}',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                FlatButton(
+                  onPressed: () {
+                    if (state.errorCode == AuthBloc.CODE_ERROR_ACCESS_TOKEN) {
+                      AuthBloc authBloc = BlocProvider.of<AuthBloc>(context);
+                      authBloc.dispatch(RefreshTokenEvent());
+                    } else {
+                      _bloc.dispatch(RefreshEvent());
+                    }
+                  },
+                  child: Text(
+                    'Refersh',
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(6)),
+                      side: BorderSide(color: Colors.grey, width: 2)),
+                )
               ],
             ),
           ),
@@ -112,7 +143,7 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
-  
+
   Widget _createPageEmpty(BuildContext context, EmptyState state) {
     return Column(
       children: <Widget>[
@@ -126,17 +157,33 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Icon(Icons.hourglass_empty, size: 40, color: Colors.grey,),
-                SizedBox(height: 10,),
-                Text('No data', style: TextStyle(color: Colors.grey),),
-                SizedBox(height: 10,),
-                FlatButton(onPressed: (){
-                  _bloc.dispatch(RefreshEvent());
-                }, child: Text('Refresh', style: TextStyle(color: Colors.grey),),
+                Icon(
+                  Icons.hourglass_empty,
+                  size: 40,
+                  color: Colors.grey,
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                Text(
+                  'No data',
+                  style: TextStyle(color: Colors.grey),
+                ),
+                SizedBox(
+                  height: 10,
+                ),
+                FlatButton(
+                  onPressed: () {
+                    _bloc.dispatch(RefreshEvent());
+                  },
+                  child: Text(
+                    'Refresh',
+                    style: TextStyle(color: Colors.grey),
+                  ),
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.all(Radius.circular(6)),
-                      side: BorderSide(color: Colors.grey, width: 2)
-                  ),)
+                      side: BorderSide(color: Colors.grey, width: 2)),
+                )
               ],
             ),
           ),
@@ -144,48 +191,51 @@ class _HomePageState extends State<HomePage> {
       ],
     );
   }
-  
+
   Widget _createPageSliver(BuildContext context, HomeState state) {
     List<Widget> sliver = [];
+
     /// add header
-    sliver.add(
-      SliverPersistentHeader(delegate: HeadDelegate(
-        contentHeight: 200,
-        closeHeight: kToolbarHeight,
-        paddingTop: MediaQuery.of(context).padding.top,
-        curveHeight: 40
-      ))
-    );
+    sliver.add(SliverPersistentHeader(
+        pinned: true,
+        delegate: HeadDelegate(
+            contentHeight: 200,
+            closeHeight: kToolbarHeight,
+            paddingTop: MediaQuery.of(context).padding.top,
+            curveHeight: 40)));
     // images
     if (state is StateData) {
-      sliver.add(
-          SliverList(
-            delegate: SliverChildBuilderDelegate((context, index){
-              if (state.illusts.length - index < 5) {
-                // need load more
-                _bloc.dispatch(LoadMoreEvent());
-              }
-              var data = state.illusts[index];
-              return Container(
-                width: double.infinity,
-                child: AspectRatio(aspectRatio: data.width.toDouble()/data.height.toDouble(),
-                child: PixivImage(data.imageUrls?.previewUrl)),
-              );
-            }, childCount: state.illusts.length),
-          )
-      );
+      sliver.add(SliverStaggeredGrid(
+          delegate: SliverChildBuilderDelegate((context, index) {
+            if (state.illusts.length - index < 5) {
+              // need load more
+              _bloc.dispatch(LoadMoreEvent());
+            }
+            var data = state.illusts[index];
+            return IllustCard(
+              imgUrl: data.imageUrls.previewUrl,
+              imgWidth: data.width.toDouble(),
+              imgHeight: data.height.toDouble(),
+              title: data.title,
+            );
+          }, childCount: state.illusts.length),
+          gridDelegate: SliverStaggeredGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 10.0,
+              crossAxisSpacing: 6.0,
+              staggeredTileBuilder: (int index) {
+                return new StaggeredTile.fit(1);
+              })));
     }
     if (state is LoadingMoreState) {
-      sliver.add(
-        SliverToBoxAdapter(
-          child: Container(
-            constraints: BoxConstraints.expand(height: 50),
-            child: Center(
-              child: CircularProgressIndicator(),
-            ),
+      sliver.add(SliverToBoxAdapter(
+        child: Container(
+          constraints: BoxConstraints.expand(height: 50),
+          child: Center(
+            child: CircularProgressIndicator(),
           ),
-        )
-      );
+        ),
+      ));
     }
     return CustomScrollView(
       physics: AlwaysScrollableScrollPhysics(),
