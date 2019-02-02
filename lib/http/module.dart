@@ -21,7 +21,6 @@
 ///
 import 'package:flutter/foundation.dart';
 import 'package:json_annotation/json_annotation.dart';
-import 'dart:convert';
 part 'module.g.dart';
 
 @JsonSerializable()
@@ -45,25 +44,8 @@ class HttpError implements Exception {
   String body;
   /// 如果有，则表示源错误
   dynamic originException;
-  /// 业务错误
-  ErrorMessage errorMessage;
   /// 错误信息
-  String get message {
-    if (errorMessage == null) {
-      return "Unknow HttpError:$code";
-    }
-    if (errorMessage.userMessage?.isNotEmpty == true) {
-      return errorMessage.userMessage;
-    }
-    return "Unknow HttpError:$code";
-  }
+  String message;
 
-  HttpError({@required this.code, this.body, this.originException, this.errorMessage}) {
-    if (this.body != null && this.errorMessage == null) {
-      try {
-        errorMessage = ErrorMessage.fromJson(jsonDecode(this.body)["error"]);
-        print('error: ${errorMessage.message}');
-      } catch (ignore) {}
-    }
-  }
+  HttpError({@required this.code, this.body, this.originException, this.message});
 }

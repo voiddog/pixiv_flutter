@@ -20,22 +20,21 @@
 
 import 'package:flutter/material.dart';
 import 'package:pixiv_flutter/ui/ui.dart';
+import 'package:pixiv_flutter/api/api.dart';
+import 'package:pixiv_flutter/bloc/bloc.dart';
+import 'favorite_bloc.dart';
 
 class IllustCard extends StatelessWidget {
-  final String imgUrl;
 
-  final String title;
+  final Illust illust;
 
-  final double imgWidth;
-
-  final double imgHeight;
-
-  const IllustCard(
-      {Key key, this.imgUrl, this.title, this.imgWidth = 1, this.imgHeight = 1})
-      : super(key: key);
+  const IllustCard({Key key, this.illust}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    double imgWidth = illust.width.toDouble();
+    double imgHeight = illust.height.toDouble();
+    FavoriteBloc favoriteBloc = BlocProvider.of(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -45,11 +44,41 @@ class IllustCard extends StatelessWidget {
             aspectRatio: imgWidth / imgHeight,
             child: DecoratedBox(
               decoration: BoxDecoration(
-                  boxShadow: [BoxShadow(color: Color(0x330D1751), offset: Offset(0, 10), blurRadius: 12)],
+                  boxShadow: [
+                    BoxShadow(
+                        color: Color(0x330D1751),
+                        offset: Offset(0, 10),
+                        blurRadius: 12)
+                  ],
                   color: Colors.white,
                   borderRadius: BorderRadius.all(Radius.circular(6.0)),
                   image: DecorationImage(
-                      image: PixivImage.createImageProvider(imgUrl))),
+                      image: PixivImage.createImageProvider(
+                          illust.imageUrls.previewUrl))),
+              child: Stack(
+                children: <Widget>[
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: BlocBuilder<FavoriteEvent, FavoriteState>(
+                        bloc: favoriteBloc, builder: (context, state) {
+                      bool isBookmarked = state.favoriteIllusts.containsKey(
+                          illust.id);
+                      if (!isBookmarked) {
+                        isBookmarked = illust.isBookmarked;
+                      }
+                      return FavoriteButton(
+                        isFavorite: isBookmarked, favoritePressed: () {
+                          if (!isBookmarked) {
+                            favoriteBloc?.dispatch(AddFavoriteEvent(illust));
+                          } else {
+                            favoriteBloc?.dispatch(RemoveFavoriteEvent(illust));
+                          }
+                      },);
+                    }),
+                  )
+                ],
+              ),
             ),
           ),
         ),
@@ -60,9 +89,9 @@ class IllustCard extends StatelessWidget {
             children: <Widget>[
               Expanded(
                   child: Text(
-                title,
-                style: TextStyle(color: Colors.black38, fontSize: 12),
-              )),
+                    illust.title,
+                    style: TextStyle(color: Colors.black38, fontSize: 12),
+                  )),
               InkResponse(
                 onTap: () {},
                 radius: Material.defaultSplashRadius,
@@ -78,6 +107,44 @@ class IllustCard extends StatelessWidget {
           ),
         )
       ],
+    );
+  }
+}
+
+class FavoriteButton extends StatefulWidget {
+  final bool isFavorite;
+  final VoidCallback favoritePressed;
+
+  FavoriteButton({this.isFavorite = false, this.favoritePressed});
+
+  @override
+  _FavoriteButtonState createState() => _FavoriteButtonState();
+}
+
+class _FavoriteButtonState extends State<FavoriteButton> {
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      shape: CircleBorder(),
+      color: Colors.transparent,
+      child: InkResponse(
+        onTap: widget.favoritePressed,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Material(
+              color: Colors.transparent,
+              elevation: 8,
+              shape: CircleBorder(),
+              shadowColor: widget.isFavorite ? Colors.red : Colors.black,
+              child: Icon(
+                Icons.favorite,
+                color: widget.isFavorite ? Colors.red : Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

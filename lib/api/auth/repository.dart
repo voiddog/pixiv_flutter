@@ -1,3 +1,9 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:pixiv_flutter/http/http.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 ///
 /// ┏┛ ┻━━━━━┛ ┻┓
 /// ┃　　　　　　 ┃
@@ -19,10 +25,26 @@
 /// @since 2019-01-25 13:05
 ///
 import 'module.dart';
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-import 'package:pixiv_flutter/http/http.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+/// ┏┛ ┻━━━━━┛ ┻┓
+/// ┃　　　　　　 ┃
+/// ┃　　　━　　　┃
+/// ┃　┳┛　  ┗┳　┃
+/// ┃　　　　　　 ┃
+/// ┃　　　┻　　　┃
+/// ┃　　　　　　 ┃
+/// ┗━┓　　　┏━━━┛
+/// * ┃　　　┃   神兽保佑
+/// * ┃　　　┃   代码无BUG！
+/// * ┃　　　┗━━━━━━━━━┓
+/// * ┃　　　　　　　    ┣┓
+/// * ┃　　　　         ┏┛
+/// * ┗━┓ ┓ ┏━━━┳ ┓ ┏━┛
+/// * * ┃ ┫ ┫   ┃ ┫ ┫
+/// * * ┗━┻━┛   ┗━┻━┛
+/// @author qigengxin
+/// @since 2019-01-25 13:05
+///
+
 
 class AuthRepository {
 
@@ -136,7 +158,7 @@ class AuthRepository {
         requestBody["username"] = username;
         requestBody["password"] = password;
       }
-      final response = await Http.post(_authUrl, body: requestBody);
+      final response = await PixivHttp.instance.post(_authUrl, body: requestBody);
       LoginResponse loginResponse = LoginResponse.fromJson(json.decode(response.body)["response"]);
       _updateFromLoginResponse(loginResponse);
       return loginResponse;
@@ -145,13 +167,12 @@ class AuthRepository {
         // network error
         try {
           Map<String, dynamic> errorResp = jsonDecode(e.body);
-          e.errorMessage = ErrorMessage()..message=errorResp['errors']['system']['message'];
+          e.message = errorResp['errors']['system']['message'];
         } catch (ignore) {}
       }
       throw LoginError(code: e.code, message: e.message);
     } catch (e) {
-      print('$e');
-      throw LoginError(code: -1, message: "Unknow Error");
+      throw LoginError(code: -1, message: "Unknow Login Error");
     }
   }
 }

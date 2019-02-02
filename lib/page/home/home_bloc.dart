@@ -41,10 +41,13 @@ mixin StateData on HomeState {
 }
 
 class RefreshingState extends HomeState with StateData {
+  bool waitingForNewToken = false;
   bool isPageLoad = false;
 }
 
-class LoadingMoreState extends HomeState with StateData {}
+class LoadingMoreState extends HomeState with StateData {
+  bool waitingForNewToken = false;
+}
 
 class NewDataState extends HomeState with StateData {
   bool isRefresh = false;
@@ -62,18 +65,22 @@ class ErrorState extends HomeState with StateData {
 
 class HomeEvent {}
 
-class RefreshEvent extends HomeEvent {}
+class RefreshEvent extends HomeEvent {
+  bool waitingForNewToken = false;
+}
 
-class LoadMoreEvent extends HomeEvent {}
+class LoadMoreEvent extends HomeEvent {
+  bool waitingForNewToken = false;
+}
+
+class OnNewTokenGetEvent extends HomeEvent {}
 
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
-  final AuthBloc authBloc;
-
   final IllustsRepository repository;
 
-  HomeBloc({@required this.authBloc, @required this.repository})
-    : assert(authBloc != null), assert(repository != null);
+  HomeBloc({@required this.repository})
+    : assert(repository != null);
 
   @override
   HomeState get initialState => IdleState();
@@ -94,30 +101,51 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       }
     } else if (currentState is CompleteState) {
       if (event is RefreshEvent) {
-        yield new RefreshingState().from(currentState);
+        yield new RefreshingState()
+            ..from(currentState);
         yield* refresh(currentState);
       }
     } else if (currentState is NewDataState) {
       if (event is RefreshEvent) {
-        yield new RefreshingState().from(currentState);
+        yield new RefreshingState()
+          ..from(currentState);
         yield* refresh(currentState);
       } else if (event is LoadMoreEvent) {
-        yield new LoadingMoreState().from(currentState);
+        yield new LoadingMoreState()
+          ..from(currentState);
         yield* loadMore(currentState, currentState.nextUrl);
       }
     } else if (currentState is ErrorState) {
       if (event is RefreshEvent) {
         yield new RefreshingState()
+            ..waitingForNewToken = event.waitingForNewToken
             ..isPageLoad = currentState.illusts?.isNotEmpty != true
             ..from(currentState);
+        if (!event.waitingForNewToken) {
+          yield* refresh(currentState);
+        }
+      } else if (event is LoadMoreEvent) {
+        yield new LoadingMoreState()
+            ..waitingForNewToken = event.waitingForNewToken
+            ..from(currentState);
+        if (!event.waitingForNewToken) {
+          yield* loadMore(currentState, currentState.nextUrl);
+        }
+      }
+    } else if (currentState is RefreshingState) {
+      if (event is OnNewTokenGetEvent && currentState.waitingForNewToken) {
         yield* refresh(currentState);
+      }
+    } else if (currentState is LoadingMoreState) {
+      if (event is OnNewTokenGetEvent && currentState.waitingForNewToken) {
+        yield* loadMore(currentState, currentState.nextUrl);
       }
     }
   }
 
   Stream<HomeState> refresh(HomeState state) async* {
     try {
-      RecommendedResponse response = await repository.recommended(authBloc.authCode, null);
+      RecommendedResponse response = await repository.recommended(null);
       if (response == null || response.illusts?.isNotEmpty != true) {
         yield new EmptyState();
       } else {
@@ -141,7 +169,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
   Stream<HomeState> loadMore(StateData state, String nextUrl) async* {
     try {
-      RecommendedResponse response = await repository.recommended(authBloc.authCode, nextUrl);
+      RecommendedResponse response = await repository.recommended(nextUrl);
       if (response == null || response.illusts?.isNotEmpty != true) {
         yield new CompleteState().from(state);
       } else {

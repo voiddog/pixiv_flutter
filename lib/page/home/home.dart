@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:pixiv_flutter/api/api.dart';
 import 'package:pixiv_flutter/page/page.dart';
 import 'package:pixiv_flutter/bloc/bloc.dart';
-import 'bloc.dart';
+import 'home_bloc.dart';
 import 'header.dart';
-import 'package:pixiv_flutter/ui/ui.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'illust_card.dart';
+import 'favorite_bloc.dart';
 
 class HomePage extends StatefulWidget {
   HomePage() : super();
@@ -19,38 +19,45 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   HomeBloc _bloc;
+  FavoriteBloc _favoriteBloc;
 
   @override
   void initState() {
     super.initState();
     AuthBloc authBloc = BlocProvider.of<AuthBloc>(context);
     authBloc.dispatch(RefreshTokenEvent());
-    _bloc = HomeBloc(authBloc: authBloc, repository: IllustsRepository());
-    _bloc.dispatch(RefreshEvent());
+    IllustsRepository repository = IllustsRepository();
+    _bloc = HomeBloc(repository: repository);
+    _favoriteBloc = FavoriteBloc(repository);
+    _bloc.dispatch(RefreshEvent()..waitingForNewToken=true);
+    authBloc.dispatch(RefreshTokenEvent());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Color(0xfff5fafe),
-      body: BlocReceiver(
-        bloc: BlocProvider.of<AuthBloc>(context),
-        callback: (context, state) {
-          /// 如果触发了登出，退出到登出界面
-          if (state is Unauthenticated && state.isLogout) {
-            Navigator.of(context).popUntil((route) {
-              return route.isFirst;
-            });
-            Navigator.of(context)
-                .pushReplacement(MaterialPageRoute(builder: (context) {
-              return LoginPage();
-            }));
-          } else if (state is Authenticated && state.preState is TokenOverdue) {
-            // need refresh
-            _bloc.dispatch(RefreshEvent());
-          }
-        },
-        child: BlocBuilder(bloc: _bloc, builder: _buildContent),
+      body: BlocProvider<FavoriteBloc>(
+        bloc: _favoriteBloc,
+        child: BlocReceiver(
+          bloc: BlocProvider.of<AuthBloc>(context),
+          callback: (context, state) {
+            /// 如果触发了登出，退出到登出界面
+            if (state is Unauthenticated && state.isLogout) {
+              Navigator.of(context).popUntil((route) {
+                return route.isFirst;
+              });
+              Navigator.of(context)
+                  .pushReplacement(MaterialPageRoute(builder: (context) {
+                return LoginPage();
+              }));
+            } else if (state is Authenticated && state.isTokenUpdate) {
+              // need refresh
+              _bloc.dispatch(OnNewTokenGetEvent());
+            }
+          },
+          child: BlocBuilder(bloc: _bloc, builder: _buildContent),
+        ),
       ),
     );
   }
@@ -101,42 +108,40 @@ class _HomePageState extends State<HomePage> {
         ),
         Expanded(
           child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  Icons.error_outline,
-                  size: 40,
-                  color: Colors.grey,
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                Text(
-                  '${state.message}',
-                  style: TextStyle(color: Colors.grey),
-                ),
-                SizedBox(
-                  height: 10,
-                ),
-                FlatButton(
-                  onPressed: () {
-                    if (state.errorCode == AuthBloc.CODE_ERROR_ACCESS_TOKEN) {
-                      AuthBloc authBloc = BlocProvider.of<AuthBloc>(context);
-                      authBloc.dispatch(RefreshTokenEvent());
-                    } else {
-                      _bloc.dispatch(RefreshEvent());
-                    }
-                  },
-                  child: Text(
-                    'Refersh',
+            child: Padding(
+              padding: const EdgeInsets.all(18.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Icon(
+                    Icons.error_outline,
+                    size: 40,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(
+                    height: 10,
+                  ),
+                  Text(
+                    '${state.message}',
                     style: TextStyle(color: Colors.grey),
                   ),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.all(Radius.circular(6)),
-                      side: BorderSide(color: Colors.grey, width: 2)),
-                )
-              ],
+                  SizedBox(
+                    height: 10,
+                  ),
+                  FlatButton(
+                    onPressed: () {
+                      _bloc.dispatch(RefreshEvent());
+                    },
+                    child: Text(
+                      'Refersh',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.all(Radius.circular(6)),
+                        side: BorderSide(color: Colors.grey, width: 2)),
+                  )
+                ],
+              ),
             ),
           ),
         )
@@ -205,6 +210,19 @@ class _HomePageState extends State<HomePage> {
             curveHeight: 40)));
     // images
     if (state is StateData) {
+      sliver.add(SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6.0, 10, 6.0, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: <Widget>[
+              Icon(Icons.favorite, color: Colors.redAccent, size: 20,),
+              SizedBox(width: 5,),
+              Text('Recommended', style: TextStyle(color: Colors.blue[400], fontSize: 20),)
+            ],
+          ),
+        ),
+      ));
       sliver.add(SliverStaggeredGrid(
           delegate: SliverChildBuilderDelegate((context, index) {
             if (state.illusts.length - index < 5) {
@@ -212,12 +230,7 @@ class _HomePageState extends State<HomePage> {
               _bloc.dispatch(LoadMoreEvent());
             }
             var data = state.illusts[index];
-            return IllustCard(
-              imgUrl: data.imageUrls.previewUrl,
-              imgWidth: data.width.toDouble(),
-              imgHeight: data.height.toDouble(),
-              title: data.title,
-            );
+            return IllustCard(illust: data, key: Key(data.id.toString()),);
           }, childCount: state.illusts.length),
           gridDelegate: SliverStaggeredGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,

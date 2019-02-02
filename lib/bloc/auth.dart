@@ -22,6 +22,7 @@
 import 'package:bloc/bloc.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pixiv_flutter/api/api.dart';
+import 'package:pixiv_flutter/http/http.dart';
 
 /// ======================== 验证状态 ===========================
 abstract class AuthState {}
@@ -38,12 +39,17 @@ class Authenticated extends AuthState {
 
   final LoginUser user;
 
-  final AuthState preState;
+  /// 从登出状态进入登录
+  final bool isLogin;
+
+  /// 从 token 刷新了
+  final bool isTokenUpdate;
 
   Authenticated(
       {@required this.accessToken,
       this.user,
-      this.preState});
+      this.isLogin = false,
+      this.isTokenUpdate = false});
 
   @override
   String toString() => "Authenticated";
@@ -51,7 +57,7 @@ class Authenticated extends AuthState {
 
 /// 未登录
 class Unauthenticated extends AuthState {
-  /// 前一个状态是登录状态, 改编成了登出
+  /// 触发了登出
   final bool isLogout;
 
   /// 如果有错误
@@ -128,6 +134,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository repository;
 
   AuthBloc({@required this.repository}) : assert(repository != null) {
+    PixivHttp.instance.requestInterceptMap["auth"] = _addAuthCode;
     repository.init().then((_) {
       dispatch(AuthInitEvent());
     });
@@ -147,7 +154,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (event is AuthInitEvent) {
         if (repository.isLogin) {
           yield new Authenticated(
-              preState: currentState,
               accessToken: repository.accessToken, user: repository.user);
         } else {
           yield new Unauthenticated();
@@ -163,7 +169,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           yield new Authenticated(
               accessToken: response.accessToken,
               user: response.user,
-              preState: currentState);
+              isLogin: true);
         } on LoginError catch (e) {
           yield new Unauthenticated(message: e.message);
         }
@@ -175,15 +181,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         try {
           LoginResponse response = await repository.refreshToken();
           yield new Authenticated(
+              isTokenUpdate: true,
               accessToken: response.accessToken,
-              user: response.user,
-              preState: currentState);
+              user: response.user);
         } on LoginError catch (e) {
-          /// 刷新 token 失败
-          if (e.code == CODE_ERROR_ACCESS_TOKEN) {
-            /// 需要重新登录
-            yield new TokenOverdue();
-          }
+          _onTokenOverdueCheck(e);
         }
       } else if (event is LogoutEvent) {
         yield new AuthLoading(AuthLoading.STATE_LOGOUT);
@@ -202,15 +204,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           yield new Authenticated(
               accessToken: response.accessToken,
               user: response.user,
-              preState: currentState);
-        } on LoginError catch (e) {
-          /// 刷新 token 失败
-          if (e.code == CODE_ERROR_ACCESS_TOKEN) {
-            /// 需要重新登录
-            yield new TokenOverdue();
-          }
-        }
+              isTokenUpdate: true);
+        } catch (ignore) {}
       }
     }
+  }
+
+  void _onTokenOverdueCheck(LoginError error) {
+    if (error.code == CODE_ERROR_ACCESS_TOKEN) {
+      /// token 失效
+      dispatch(TokenOverdueEvent());
+    }
+  }
+
+  String _addAuthCode(String url, Map<String, String> headers, dynamic body) {
+    if (currentState is Authenticated || currentState is TokenOverdue) {
+      /// add auth code
+      if (headers != null) {
+        headers["authorization"] = authCode;
+      }
+    }
+    return url;
   }
 }
